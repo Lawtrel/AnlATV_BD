@@ -1,48 +1,224 @@
 <!DOCTYPE html>
-<html lang="pt-BR" data-theme="light">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AnlATV_BD - Dashboard</title>
+    <title>Gerenciar Artigos</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { padding: 40px 20px; display: flex; align-items: center; justify-content: center; min-height: 100vh; background-color: var(--pico-background-color); }
-        .header-section { text-align: center; margin-bottom: 3rem; }
-        .header-section h1 { font-size: 3rem; margin-bottom: 0.5rem; color: var(--pico-primary); }
-        .menu-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; max-width: 1000px; width: 100%;}
-        .menu-card { text-align: center; text-decoration: none; color: inherit; display: block; }
-        .menu-card article { transition: transform 0.2s ease, box-shadow 0.2s ease; height: 100%; cursor: pointer; }
-        .menu-card article:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); border-color: var(--pico-primary); }
-        .icon { font-size: 3rem; margin-bottom: 1rem; display: block; }
+        /* TEMA VERMELHO E BRANCO */
+        :root {
+            --pico-primary: #e63946;
+            --pico-primary-background: #e63946;
+            --pico-primary-hover: #d90429;
+            --pico-primary-hover-background: #d90429;
+            --pico-background-color: #f4f6f8;
+            --pico-form-element-active-border-color: var(--pico-primary);
+            --pico-form-element-focus-color: rgba(230, 57, 70, 0.125);
+        }
+
+        body { padding: 20px; }
+        
+        /* Estilo do painel (Card) principal branco */
+        .panel {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+
+        h1 { color: var(--pico-primary); font-weight: 800; }
+        h2 { color: #333; margin-bottom: 1.5rem; }
+        
+        nav a { font-weight: bold; color: var(--pico-primary); }
+        
+        .actions { display: flex; gap: 8px; }
+        .hidden { display: none; }
+        
+        /* Melhoria na tabela */
+        table { background-color: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        th { background-color: #e63946 !important; color: white !important; }
     </style>
 </head>
 <body>
-    <main class="container">
-        <header class="header-section">
-            <h1>📚 AnlATV_BD</h1>
-            <p>Database Management System</p>
-        </header>
 
-        <div class="menu-grid">
-            <a href="artigos.html" class="menu-card">
-                <article><span class="icon">📝</span><h2>Artigos</h2><p>Gerenciar artigos</p></article>
-            </a>
-            <a href="autores.html" class="menu-card">
-                <article><span class="icon">✍️</span><h2>Autores</h2><p>Ver lista de pesquisadores</p></article>
-            </a>
-            <a href="palavras-chave.html" class="menu-card">
-                <article><span class="icon">🔑</span><h2>Palavras-chave</h2><p>Termos mais comuns</p></article>
-            </a>
-            <a href="referencias.html" class="menu-card">
-                <article><span class="icon">📖</span><h2>Referências</h2><p>Controle de bibliografia</p></article>
-            </a>
-            <!-- NOVO BOTÃO DE IMPORTAR CSV -->
-            <a href="importar.html" class="menu-card">
-                <article style="background-color: var(--pico-primary-background); color: white;">
-                    <span class="icon">📤</span><h2 style="color: white;">Importar CSV</h2><p style="color: white;">Carregar base de dados Scopus/WoS</p>
-                </article>
-            </a>
+    <main class="container">
+        <!-- Navegação superior -->
+        <nav style="margin-bottom: 20px;">
+            <ul><li><a href="index.html">⬅ Voltar ao Menu Inicial</a></li></ul>
+        </nav>
+
+        <h1>📝 Gerenciador de Artigos</h1>
+        
+        <!-- FORMULÁRIO DENTRO DO NOVO PAINEL BRANCO -->
+        <div class="panel">
+            <header><h2 id="form-title">Adicionar Novo Artigo</h2></header>
+            <form id="article-form">
+                <input type="hidden" id="article-id">
+                
+                <div class="grid">
+                    <label>
+                        Título do Artigo
+                        <input type="text" id="title" required placeholder="Ex: Machine Learning in Healthcare">
+                    </label>
+                    <label>
+                        Ano de Publicação
+                        <input type="number" id="year" placeholder="Ex: 2024">
+                    </label>
+                </div>
+
+                <div class="grid">
+                    <label>
+                        DOI
+                        <input type="text" id="doi" placeholder="Ex: 10.1000/182">
+                    </label>
+                    <label>
+                        Tipo de Documento
+                        <select id="doc-type">
+                            <option value="Article">Article</option>
+                            <option value="Conference paper">Conference paper</option>
+                            <option value="Book">Book</option>
+                            <option value="Review">Review</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div style="margin-top: 1rem;">
+                    <button type="submit" id="submit-btn">Salvar Artigo</button>
+                    <button type="button" id="cancel-btn" class="secondary hidden" onclick="resetForm()" style="background-color: #666; border-color: #666;">Cancelar Edição</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- TABELA DE DADOS -->
+        <h2>Artigos Salvos na Base</h2>
+        <div class="overflow-auto">
+            <table class="striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Título</th>
+                        <th>Ano</th>
+                        <th>DOI</th>
+                        <th>Tipo</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <!-- O JavaScript injeta as linhas aqui -->
+                </tbody>
+            </table>
         </div>
     </main>
+
+    <script>
+        // --- 1. CONFIGURAÇÃO DO SUPABASE ---
+        const SUPABASE_URL = 'https://cjtbqzcbzrxkddndobfu.supabase.co'; 
+        const SUPABASE_KEY = 'SUA_CHAVE_AQUI'; // COLOQUE SUA CHAVE!
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const form = document.getElementById('article-form');
+        const tableBody = document.getElementById('table-body');
+        const formTitle = document.getElementById('form-title');
+        const cancelBtn = document.getElementById('cancel-btn');
+
+        // --- 2. LER DADOS (READ) ---
+        async function fetchArticles() {
+            tableBody.innerHTML = '<tr><td colspan="6" aria-busy="true">Carregando dados...</td></tr>';
+            
+            const { data, error } = await supabaseClient
+                .from('Article')
+                .select('*')
+                .order('ID', { ascending: false });
+
+            if (error) {
+                console.error("Erro:", error);
+                tableBody.innerHTML = `<tr><td colspan="6" style="color: red;">Erro ao carregar. Verifique o console.</td></tr>`;
+                return;
+            }
+            renderTable(data);
+        }
+
+        function renderTable(articles) {
+            tableBody.innerHTML = '';
+            if(articles.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="6">Nenhum artigo encontrado.</td></tr>';
+                return;
+            }
+
+            articles.forEach(article => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${article.ID}</td>
+                    <td><b>${article.Title || '-'}</b></td>
+                    <td>${article.Year || '-'}</td>
+                    <td>${article.DOI || '-'}</td>
+                    <td><span class="pico-badge">${article.Document_Type || '-'}</span></td>
+                    <td class="actions">
+                        <button class="outline" onclick="editArticle(${article.ID}, '${article.Title.replace(/'/g, "\\'")}', ${article.Year}, '${article.DOI}', '${article.Document_Type}')" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">Editar</button>
+                        <button class="outline" onclick="deleteArticle(${article.ID})" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; color: #d90429; border-color: #d90429;">Excluir</button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // --- 3. CRIAR OU ATUALIZAR (CREATE/UPDATE) ---
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault(); 
+            
+            const id = document.getElementById('article-id').value;
+            const articleData = {
+                Title: document.getElementById('title').value,
+                Year: parseInt(document.getElementById('year').value) || null,
+                DOI: document.getElementById('doi').value,
+                Document_Type: document.getElementById('doc-type').value
+            };
+
+            if (id) {
+                const { error } = await supabaseClient.from('Article').update(articleData).eq('ID', id);
+                if (error) alert("Erro ao atualizar: " + error.message);
+            } else {
+                const { error } = await supabaseClient.from('Article').insert([articleData]);
+                if (error) alert("Erro ao criar: " + error.message);
+            }
+
+            resetForm();
+            fetchArticles(); 
+        });
+
+        // --- 4. EXCLUIR (DELETE) ---
+        window.deleteArticle = async (id) => {
+            if (confirm('Tem certeza que deseja excluir este artigo permanentemente?')) {
+                const { error } = await supabaseClient.from('Article').delete().eq('ID', id);
+                if (error) alert("Erro ao excluir: " + error.message);
+                else fetchArticles();
+            }
+        }
+
+        // --- FUNÇÕES AUXILIARES ---
+        window.editArticle = (id, title, year, doi, docType) => {
+            document.getElementById('article-id').value = id;
+            document.getElementById('title').value = title !== 'null' ? title : '';
+            document.getElementById('year').value = year !== 'null' ? year : '';
+            document.getElementById('doi').value = doi !== 'null' ? doi : '';
+            document.getElementById('doc-type').value = docType !== 'null' ? docType : 'Article';
+            
+            formTitle.innerText = "Editando Artigo #" + id;
+            cancelBtn.classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        window.resetForm = () => {
+            form.reset();
+            document.getElementById('article-id').value = '';
+            formTitle.innerText = "Adicionar Novo Artigo";
+            cancelBtn.classList.add('hidden');
+        }
+
+        fetchArticles();
+    </script>
 </body>
 </html>
