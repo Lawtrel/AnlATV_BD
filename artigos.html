@@ -1,150 +1,120 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerenciar Artigos</title>
+    <title>Article Manager</title>
+    <!-- Pico CSS for instant beautiful styling -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <!-- Supabase JS Library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* TEMA VERMELHO E BRANCO */
-        :root {
-            --pico-primary: #e63946;
-            --pico-primary-background: #e63946;
-            --pico-primary-hover: #d90429;
-            --pico-primary-hover-background: #d90429;
-            --pico-background-color: #f4f6f8;
-            --pico-form-element-active-border-color: var(--pico-primary);
-            --pico-form-element-focus-color: rgba(230, 57, 70, 0.125);
-        }
-
         body { padding: 20px; }
-        
-        /* Estilo do painel (Card) principal branco */
-        .panel {
-            background-color: white;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            margin-bottom: 2rem;
-        }
-
-        h1 { color: var(--pico-primary); font-weight: 800; }
-        h2 { color: #333; margin-bottom: 1.5rem; }
-        
-        nav a { font-weight: bold; color: var(--pico-primary); }
-        
-        .actions { display: flex; gap: 8px; }
+        .actions { display: flex; gap: 10px; }
         .hidden { display: none; }
-        
-        /* Melhoria na tabela */
-        table { background-color: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        th { background-color: #e63946 !important; color: white !important; }
     </style>
 </head>
 <body>
 
     <main class="container">
-        <!-- Navegação superior -->
-        <nav style="margin-bottom: 20px;">
-            <ul><li><a href="index.html">⬅ Voltar ao Menu Inicial</a></li></ul>
-        </nav>
-
-        <h1>📝 Gerenciador de Artigos</h1>
+        <h1>📚 Article Manager</h1>
         
-        <!-- FORMULÁRIO DENTRO DO NOVO PAINEL BRANCO -->
-        <div class="panel">
-            <header><h2 id="form-title">Adicionar Novo Artigo</h2></header>
+        <!-- CRUD FORM -->
+        <article>
+            <header><h2 id="form-title">Add New Article</h2></header>
             <form id="article-form">
                 <input type="hidden" id="article-id">
                 
                 <div class="grid">
                     <label>
-                        Título do Artigo
-                        <input type="text" id="title" required placeholder="Ex: Machine Learning in Healthcare">
+                        Title
+                        <input type="text" id="title" required placeholder="E.g., Intro to Databases">
                     </label>
                     <label>
-                        Ano de Publicação
-                        <input type="number" id="year" placeholder="Ex: 2024">
+                        Year
+                        <input type="number" id="year" required placeholder="2024">
                     </label>
                 </div>
 
                 <div class="grid">
                     <label>
                         DOI
-                        <input type="text" id="doi" placeholder="Ex: 10.1000/182">
+                        <input type="text" id="doi" placeholder="10.1000/182">
                     </label>
                     <label>
-                        Tipo de Documento
+                        Document Type
                         <select id="doc-type">
-                            <option value="Article">Article</option>
-                            <option value="Conference paper">Conference paper</option>
+                            <option value="Journal">Journal</option>
+                            <option value="Conference">Conference</option>
                             <option value="Book">Book</option>
-                            <option value="Review">Review</option>
                         </select>
                     </label>
                 </div>
 
-                <div style="margin-top: 1rem;">
-                    <button type="submit" id="submit-btn">Salvar Artigo</button>
-                    <button type="button" id="cancel-btn" class="secondary hidden" onclick="resetForm()" style="background-color: #666; border-color: #666;">Cancelar Edição</button>
-                </div>
+                <button type="submit" id="submit-btn">Save Article</button>
+                <button type="button" id="cancel-btn" class="secondary hidden" onclick="resetForm()">Cancel Edit</button>
             </form>
-        </div>
+        </article>
 
-        <!-- TABELA DE DADOS -->
-        <h2>Artigos Salvos na Base</h2>
+        <!-- DATA TABLE -->
+        <h2>Saved Articles</h2>
         <div class="overflow-auto">
             <table class="striped">
                 <thead>
                     <tr>
                         <th>ID</th>
-                        <th>Título</th>
-                        <th>Ano</th>
+                        <th>Title</th>
+                        <th>Year</th>
                         <th>DOI</th>
-                        <th>Tipo</th>
-                        <th>Ações</th>
+                        <th>Type</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="table-body">
-                    <!-- O JavaScript injeta as linhas aqui -->
+                    <!-- Data will be injected here via JavaScript -->
                 </tbody>
             </table>
         </div>
     </main>
 
     <script>
-        // --- 1. CONFIGURAÇÃO DO SUPABASE ---
+        // --- 1. INITIALIZE SUPABASE ---
         const SUPABASE_URL = 'https://cjtbqzcbzrxkddndobfu.supabase.co'; 
-        const SUPABASE_KEY = 'SUA_CHAVE_AQUI'; // COLOQUE SUA CHAVE!
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqdGJxemNienJ4a2RkbmRvYmZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NDc3MzIsImV4cCI6MjA5NDIyMzczMn0.agrY1BcpmHGuX7Dp_QkD_2s5RZ0AhD1B6YVpAuccihA'; 
+        
+        // CORREÇÃO: Renomeado de "supabase" para "supabaseClient" para evitar conflito com a biblioteca
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // --- DOM Elements ---
         const form = document.getElementById('article-form');
         const tableBody = document.getElementById('table-body');
         const formTitle = document.getElementById('form-title');
         const cancelBtn = document.getElementById('cancel-btn');
 
-        // --- 2. LER DADOS (READ) ---
+        // --- 2. READ (FETCH DATA) ---
         async function fetchArticles() {
-            tableBody.innerHTML = '<tr><td colspan="6" aria-busy="true">Carregando dados...</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="6" aria-busy="true">Loading...</td></tr>';
             
+            // CORREÇÃO: Usando supabaseClient
             const { data, error } = await supabaseClient
                 .from('Article')
                 .select('*')
                 .order('ID', { ascending: false });
 
             if (error) {
-                console.error("Erro:", error);
-                tableBody.innerHTML = `<tr><td colspan="6" style="color: red;">Erro ao carregar. Verifique o console.</td></tr>`;
+                console.error("Error fetching data:", error);
+                tableBody.innerHTML = `<tr><td colspan="6">Error loading data. Check console.</td></tr>`;
                 return;
             }
+
             renderTable(data);
         }
 
+        // Render data into HTML table
         function renderTable(articles) {
             tableBody.innerHTML = '';
             if(articles.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="6">Nenhum artigo encontrado.</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="6">No articles found. Add one above!</td></tr>';
                 return;
             }
 
@@ -152,72 +122,77 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${article.ID}</td>
-                    <td><b>${article.Title || '-'}</b></td>
+                    <td>${article.Title || '-'}</td>
                     <td>${article.Year || '-'}</td>
                     <td>${article.DOI || '-'}</td>
-                    <td><span class="pico-badge">${article.Document_Type || '-'}</span></td>
+                    <td>${article.Document_Type || '-'}</td>
                     <td class="actions">
-                        <button class="outline" onclick="editArticle(${article.ID}, '${article.Title.replace(/'/g, "\\'")}', ${article.Year}, '${article.DOI}', '${article.Document_Type}')" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">Editar</button>
-                        <button class="outline" onclick="deleteArticle(${article.ID})" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; color: #d90429; border-color: #d90429;">Excluir</button>
+                        <button class="outline" onclick="editArticle(${article.ID}, '${article.Title}', ${article.Year}, '${article.DOI}', '${article.Document_Type}')">Edit</button>
+                        <button class="outline contrast" onclick="deleteArticle(${article.ID})">Delete</button>
                     </td>
                 `;
                 tableBody.appendChild(tr);
             });
         }
 
-        // --- 3. CRIAR OU ATUALIZAR (CREATE/UPDATE) ---
+        // --- 3. CREATE OR UPDATE ---
         form.addEventListener('submit', async (e) => {
-            e.preventDefault(); 
+            e.preventDefault(); // Prevent page reload
             
+            // Get values from inputs
             const id = document.getElementById('article-id').value;
             const articleData = {
                 Title: document.getElementById('title').value,
-                Year: parseInt(document.getElementById('year').value) || null,
+                Year: parseInt(document.getElementById('year').value),
                 DOI: document.getElementById('doi').value,
                 Document_Type: document.getElementById('doc-type').value
             };
 
             if (id) {
+                // UPDATE if ID exists in the hidden field (CORREÇÃO: Usando supabaseClient)
                 const { error } = await supabaseClient.from('Article').update(articleData).eq('ID', id);
-                if (error) alert("Erro ao atualizar: " + error.message);
+                if (error) alert("Error updating: " + error.message);
             } else {
+                // INSERT if no ID (CORREÇÃO: Usando supabaseClient)
                 const { error } = await supabaseClient.from('Article').insert([articleData]);
-                if (error) alert("Erro ao criar: " + error.message);
+                if (error) alert("Error creating: " + error.message);
             }
 
             resetForm();
-            fetchArticles(); 
+            fetchArticles(); // Refresh table
         });
 
-        // --- 4. EXCLUIR (DELETE) ---
+        // --- 4. DELETE ---
         window.deleteArticle = async (id) => {
-            if (confirm('Tem certeza que deseja excluir este artigo permanentemente?')) {
+            if (confirm('Are you sure you want to delete this article?')) {
+                // CORREÇÃO: Usando supabaseClient
                 const { error } = await supabaseClient.from('Article').delete().eq('ID', id);
-                if (error) alert("Erro ao excluir: " + error.message);
-                else fetchArticles();
+                if (error) alert("Error deleting: " + error.message);
+                else fetchArticles(); // Refresh table
             }
         }
 
-        // --- FUNÇÕES AUXILIARES ---
+        // --- Helpers ---
         window.editArticle = (id, title, year, doi, docType) => {
             document.getElementById('article-id').value = id;
             document.getElementById('title').value = title !== 'null' ? title : '';
             document.getElementById('year').value = year !== 'null' ? year : '';
             document.getElementById('doi').value = doi !== 'null' ? doi : '';
-            document.getElementById('doc-type').value = docType !== 'null' ? docType : 'Article';
+            document.getElementById('doc-type').value = docType !== 'null' ? docType : 'Journal';
             
-            formTitle.innerText = "Editando Artigo #" + id;
+            formTitle.innerText = "Edit Article (ID: " + id + ")";
             cancelBtn.classList.remove('hidden');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            window.scrollTo(0, 0);
         }
 
         window.resetForm = () => {
             form.reset();
             document.getElementById('article-id').value = '';
-            formTitle.innerText = "Adicionar Novo Artigo";
+            formTitle.innerText = "Add New Article";
             cancelBtn.classList.add('hidden');
         }
 
+        // Initialize App by fetching data
         fetchArticles();
     </script>
 </body>
